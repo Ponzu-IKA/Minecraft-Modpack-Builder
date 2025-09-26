@@ -1,24 +1,85 @@
+use std::path::Path;
+
 use clap::Parser;
 use serde_derive::{Deserialize, Serialize};
 
+const DESC: &str = r#"Minecraft Modpack Builder       
+Licenced by: MIT-License (c) 2025 Ponzu-IKA(TsukamattaHiyoko)"#;
+
 #[derive(Parser, Debug)]
-#[command(author, version, about = "Minecraft Pack Builder")]
+#[command(author, version, about = DESC)]
 pub struct Args {}
 
 #[derive(Debug, Deserialize)]
 pub struct Config {
     pub info: Info,
-    // 取捨択一,
-    // IDで指定したいか、ダウンロード後のmodで指定したいかみたいな
-    pub clientside_string: Option<Vec<String>>,
-    pub clientside_id: Option<Vec<u32>>,
-    pub serverside_string: Option<Vec<String>>,
-    pub serverside_id: Option<Vec<String>>,
-    pub changed_configs: Option<Vec<String>>,
+    #[serde(default = "default_manifest")]
+    pub manifest: String,
+    #[serde(default, rename = "CURSEFORGE_API_KEY")]
+    pub curseforge_api_key: String,
+    #[serde(default)]
+    pub default_config: DefaultConfig,
+
+    #[serde(default = "default_dirs")]
+    pub override_dirs: Vec<String>,
+
+    // デフォルトの指定じゃ足りないときに使うよ.
+    #[serde(default)]
+    pub client_ban_list: Vec<u32>,
+    #[serde(default)]
+    pub server_ban_list: Vec<u32>,
+}
+
+fn default_dirs() -> Vec<String> {
+    vec!["./config".to_string(), "./kubejs".to_string()]
+}
+
+fn default_manifest() -> String {
+    "./manifest.json".to_string()
+}
+
+#[derive(Debug, Deserialize)]
+pub struct DefaultConfig {
+    pub client_id_ban: Vec<u32>,
+    pub server_id_ban: Vec<u32>,
+}
+
+impl Default for DefaultConfig {
+    fn default() -> Self {
+        Self {
+            client_id_ban: default_client_id_ban(),
+            server_id_ban: default_server_id_ban(),
+        }
+    }
+}
+
+fn default_config() -> DefaultConfig {
+    DefaultConfig {
+        client_id_ban: default_client_id_ban(),
+        server_id_ban: default_server_id_ban(),
+    }
+}
+
+fn default_server_id_ban() -> Vec<u32> {
+    // サーバーにいらないmod.
+    vec![
+        908741, // Embeddium
+        352491, // ModernUI
+        250398, // Controlling
+        60089,  // MouseTweaks
+    ]
+}
+fn default_client_id_ban() -> Vec<u32> {
+    // クライアントにいらないmod.
+    // おそらくこのコンフィグは必要ないと思われる.
+    // クライアントパックはサーバー+クライアントであるべき.
+    vec![
+        1122761, //AE2WebIntegration
+    ]
 }
 
 // manifest.jsonを上書きするためのinfo
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Default)]
 pub struct Info {
     pub name: String,
     pub version: String,
@@ -33,26 +94,21 @@ pub struct ManifestJson {
     pub name: String,
     pub files: Option<Vec<Mod>>,
 
-    //ここから下に変更は来ないはず...?
-    minecraft: Minecraft,
-    #[serde(rename = "manifestType")]
-    manifest_type: String,
-    #[serde(rename = "manifestVersion")]
-    manifest_version: u8,
-    overrides: String,
+    // ModLoaderを取得するために使うよ
+    pub minecraft: Minecraft,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-struct Minecraft {
-    version: String,
-    #[serde(rename = "modLoaders")]
-    mod_loaders: Option<Vec<ModLoader>>,
+pub struct Minecraft {
+    #[serde(default, rename = "modLoaders")]
+    pub mod_loaders: Vec<ModLoader>,
+    pub version: String,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-struct ModLoader {
-    id: String,
-    primary: bool,
+pub struct ModLoader {
+    pub id: String,
+    pub primary: bool,
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq)]

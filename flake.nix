@@ -2,13 +2,21 @@
   description = "A devShell example";
 
   inputs = {
-    nixpkgs.url      = "github:NixOS/nixpkgs/nixos-unstable";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     rust-overlay.url = "github:oxalica/rust-overlay";
-    flake-utils.url  = "github:numtide/flake-utils";
+    flake-utils.url = "github:numtide/flake-utils";
   };
 
-  outputs = { self, nixpkgs, rust-overlay, flake-utils, ... }:
-    flake-utils.lib.eachDefaultSystem (system:
+  outputs =
+    {
+      self,
+      nixpkgs,
+      rust-overlay,
+      flake-utils,
+      ...
+    }:
+    flake-utils.lib.eachDefaultSystem (
+      system:
       let
         overlays = [ (import rust-overlay) ];
         pkgs = import nixpkgs {
@@ -16,17 +24,19 @@
         };
       in
       {
-        devShells.default = with pkgs; mkShell {
-          buildInputs = [
-            pkg-config
-            rust-bin.stable.latest.default
-          ];
+        devShells.default =
+          with pkgs;
+          mkShell {
+            buildInputs = [
+              pkg-config
+              pkgs.openssl
+              rust-bin.stable.latest.default
+            ];
 
-          shellHook = ''
-          '';
-        };
+            shellHook = '''';
+          };
 
-        packages.default = pkgs.callPackage ./nix/rust-with-nix.nix {};
+        packages.default = pkgs.callPackage ./nix/rust-with-nix.nix { };
       }
     );
 }

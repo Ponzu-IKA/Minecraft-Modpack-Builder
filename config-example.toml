@@ -1,0 +1,14 @@
+CURSEFORGE_API_KEY = "7H3R31220M3K3Y2H3R3"
+# overridesに含めるディレクトリを指定する
+# !!この変数を有効にすると、overrideを圧縮することはしなくなる!!
+override_dirs = [
+    "dir1",
+    "dir2",
+]
+
+manifest="./.test/manifest.json"
+
+[info]
+name = "TestPack2222"
+version = "1.0.2"
+author = "xXHappy_AuthorXx"
