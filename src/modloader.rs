@@ -48,7 +48,7 @@ impl VersionSet {
                     loader_version = self.loader
                 )
             }
-            LoaderType::Fabric => format!(""),
+            LoaderType::Fabric => String::new(),
         }
     }
 }

@@ -1,20 +1,17 @@
 use anyhow::{Context, Result};
 use bytes::Bytes;
-use rayon::iter::{IntoParallelRefIterator, ParallelBridge, ParallelIterator};
+use rayon::iter::{ParallelBridge, ParallelIterator};
 use reqwest::blocking::Client;
-use reqwest::blocking::Response;
-use serde::de::Error;
 use std::time::Duration;
 use std::{
     fs::{self, File},
-    io::{Read, Seek, Write},
+    io::{Read, Write},
     path::{Path, PathBuf},
 };
 use walkdir::WalkDir;
 use zip::{
     ZipWriter,
-    result::ZipResult,
-    write::{ExtendedFileOptions, FileOptions, SimpleFileOptions},
+    write::{ExtendedFileOptions, FileOptions},
 };
 
 use crate::config::{Config, ManifestJson};
@@ -23,7 +20,7 @@ use crate::curseforge::retry;
 pub fn read_manifest_json(path: &Path) -> Result<ManifestJson> {
     // JSON向けにBufReaderの実装が存在するが精々600要素程度.
     // かつ、100KB程度と思われるので直に読み込む.
-    let raw_data = fs::read_to_string(&path)?;
+    let raw_data = fs::read_to_string(path)?;
     let manifest = serde_json::from_str(&raw_data).context("failed to parse manifest json")?;
     Ok(manifest)
 }
@@ -64,7 +61,7 @@ pub fn fetch_file(client: &Client, download_url: &String, save_path: &PathBuf) {
 
 pub fn copy_dir(from: &Path, to: &Path) -> Result<bool> {
     let has_skiped = true;
-    let mut error = 0u16;
+    let error = 0u16;
     fs::create_dir_all(to)?;
     if !from.is_dir() {
         eprintln!("This is not Directory, skipped: {}", from.to_string_lossy());
@@ -95,7 +92,7 @@ pub fn copy_dir(from: &Path, to: &Path) -> Result<bool> {
                     to_path.to_string_lossy()
                 );
 
-                if let Err(e) = fs::copy(&from_path, &to_path) {
+                if let Err(e) = fs::copy(from_path, &to_path) {
                     eprintln!("Failed to copy {:?} | {:?} :{}", from_path, to_path, e);
                 }
             }

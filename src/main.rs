@@ -1,21 +1,12 @@
 use std::{
-    fs::{self, File},
-    intrinsics::copy,
-    io::{Read, Write},
+    fs::{self},
     path::{Path, PathBuf},
 };
 
 use clap::Parser;
 use config::Args;
-use walkdir::WalkDir;
-use zip::{
-    ZipWriter,
-    result::ZipResult,
-    write::{ExtendedFileOptions, FileOptions, SimpleFileOptions},
-};
 
 use crate::{
-    config::ManifestJson,
     curseforge::fetchmods,
     modloader::{VersionSet, fetch_modloader},
     utils::{copy_dir, directory_archive, read_config, read_manifest_json},
@@ -47,7 +38,7 @@ fn main() -> anyhow::Result<()> {
     let mods_path = {
         let mut path = PathBuf::new();
         if let Some(files) = &manifest.files {
-            path = fetchmods(files, &outputfolder, &config.default_config.server_id_ban)?;
+            path = fetchmods(files, outputfolder, &config.default_config.server_id_ban)?;
         };
         path
     };
@@ -78,8 +69,8 @@ fn main() -> anyhow::Result<()> {
         let override_dirs = &config.override_dirs;
         for override_dir in override_dirs {
             copy_dir(
-                &Path::new(&override_dir),
-                &server_pack_path.join(&override_dir),
+                Path::new(&override_dir),
+                &server_pack_path.join(override_dir),
             )?;
         }
         let archive_name = pack_path.join(format!("{}-server.zip", pack_name));
@@ -93,8 +84,8 @@ fn main() -> anyhow::Result<()> {
         let override_dirs = &config.override_dirs;
         for override_dir in override_dirs {
             copy_dir(
-                &Path::new(&override_dir),
-                &client_overrides_path.join(&override_dir),
+                Path::new(&override_dir),
+                &client_overrides_path.join(override_dir),
             )?;
         }
         let mut manifest_json = manifest;
@@ -109,7 +100,7 @@ fn main() -> anyhow::Result<()> {
         additional_files.push("./modlist.html".to_string());
         for f in additional_files {
             //後でディレクトリコピーから単一ファイルコピー関数を切り出しておく
-            fs::copy(&Path::new(&f), outputfolder.join(&f))?;
+            fs::copy(Path::new(&f), outputfolder.join(&f))?;
         }
 
         let archive_name = pack_path.join(format!("{}-client.zip", pack_name));
