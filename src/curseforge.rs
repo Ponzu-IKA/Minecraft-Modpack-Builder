@@ -3,11 +3,10 @@ use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use reqwest::blocking::Client;
 use serde_derive::Deserialize;
 use std::{
-    collections::HashMap,
-    fs::{self, File},
-    hash::RandomState,
+    fs::{self},
     path::{Path, PathBuf},
-    sync::Mutex,
+    thread,
+    time::Duration,
 };
 
 #[derive(Deserialize, Debug)]
@@ -22,12 +21,36 @@ struct FileData {
     downloadUrl: String,
 }
 
+pub fn retry<F, T, E>(mut f: F, retries: usize, delay: Duration) -> Result<T, E>
+where
+    F: FnMut() -> Result<T, E>,
+    E: std::fmt::Debug,
+{
+    for attempt in 1..=retries {
+        match f() {
+            Ok(val) => return Ok(val),
+            Err(e) => {
+                eprintln!("Failed ({} times): {:?}, retrying...", attempt, e);
+                thread::sleep(delay);
+            }
+        }
+    }
+    f()
+}
+
+fn get_json(client: &Client, url: &String) -> Result<FileResponse, reqwest::Error> {
+    println!("{}", url);
+    client.get(url).send().expect("Request Failed").json()
+}
+fn get_file() {}
+
 pub fn fetchmods(
-    cf_apikey: &String,
     mod_list: &Vec<Mod>,
     output_folder: &Path,
     server_banned_mods: &Vec<u32>,
 ) -> anyhow::Result<PathBuf> {
+    let sleep = Duration::from_secs(5); //APIがパンクしちゃうのでちょっと長めに待たせる
+
     let output_folder = output_folder.join("mods");
     fs::create_dir_all(&output_folder)?;
 
@@ -47,17 +70,10 @@ pub fn fetchmods(
             cf_mod.project_id, cf_mod.file_id
         );
         let url = format!(
-            "https://api.curseforge.com/v1/mods/{}/files/{}",
+            "https://api.curse.tools/v1/cf/mods/{}/files/{}",
             cf_mod.project_id, cf_mod.file_id
         );
-
-        let response: FileResponse = client
-            .get(&url)
-            .header("x-api-key", cf_apikey)
-            .send()
-            .expect("Request Failed")
-            .json()
-            .expect("Couldn't get JSON.");
+        let response = retry(|| get_json(&client, &url), 5, sleep).unwrap();
 
         println!("JSON: {:?}", response);
         // JSONからファイル名を確保
@@ -69,5 +85,6 @@ pub fn fetchmods(
         // だうんろーど.
         fetch_file(&client, &download_url, &file_path);
     });
+
     Ok(output_folder)
 }

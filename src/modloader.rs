@@ -1,8 +1,6 @@
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
-use rayon::str::ParallelString;
 use reqwest::blocking::Client;
-use serde_json::to_string_pretty;
 
 use crate::utils::fetch_file;
 

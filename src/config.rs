@@ -1,5 +1,3 @@
-use std::path::Path;
-
 use clap::Parser;
 use serde_derive::{Deserialize, Serialize};
 
@@ -15,17 +13,24 @@ pub struct Config {
     pub info: Info,
     #[serde(default = "default_manifest")]
     pub manifest: String,
-    #[serde(default, rename = "CURSEFORGE_API_KEY")]
-    pub curseforge_api_key: String,
     #[serde(default)]
     pub default_config: DefaultConfig,
 
     #[serde(default = "default_dirs")]
     pub override_dirs: Vec<String>,
 
+    // modlist.htmlのように一切の変更なしにclientパックにぶち込むやつはここで定義
+    // 例:  |overrides
+    //      |- modlist.html
+    //      |- LICENCE.md
+    #[serde(default)]
+    pub additional_copy_files: Vec<String>,
+
     // デフォルトの指定じゃ足りないときに使うよ.
     #[serde(default)]
     pub client_ban_list: Vec<u32>,
+    // サーバーの方は使わないでいいと思う。
+    #[warn(deprecated)]
     #[serde(default)]
     pub server_ban_list: Vec<u32>,
 }
@@ -69,6 +74,7 @@ fn default_server_id_ban() -> Vec<u32> {
         60089,  // MouseTweaks
     ]
 }
+#[warn(deprecated)]
 fn default_client_id_ban() -> Vec<u32> {
     // クライアントにいらないmod.
     // おそらくこのコンフィグは必要ないと思われる.
