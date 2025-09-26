@@ -57,9 +57,7 @@ pub fn fetchmods(
     let client = Client::new();
 
     mod_list.par_iter().for_each(|cf_mod| {
-        if server_banned_mods
-            .iter()
-            .any(|&id| id == cf_mod.project_id)
+        if server_banned_mods.contains(&cf_mod.project_id)
         {
             println!("skip detected client mod: (id: {})", cf_mod.project_id);
             return;
