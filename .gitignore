@@ -1,0 +1,9 @@
+/target
+/distribution
+/config
+/kubejs
+/manifest.json
+/modlist.html
+/app.log
+./.config.toml
+./.test/
