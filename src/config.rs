@@ -25,8 +25,9 @@ pub struct Config {
     //      |- LICENCE.md
     #[serde(default)]
     pub additional_copy_files: Vec<String>,
-
-    // デフォルトの指定じゃ足りないときに使うよ.
+    
+    /// ProjectIDを指定することでサーバーパックにクライアントMODが入ることを阻止できる.
+    /// デフォルトの指定じゃ足りないときに使うよ.
     #[serde(default)]
     pub additional_noneeds_with_server: Vec<u32>,
 }
@@ -80,6 +81,13 @@ pub struct ManifestJson {
 
     // ModLoaderを取得するために使うよ
     pub minecraft: Minecraft,
+
+    // 上書きしても情報が残るようにする
+    #[serde(rename = "manifestType")]
+    manifest_type: String,
+    #[serde(rename = "manifestVersion")]
+    manifest_version: u8,
+    overrides: String,
 }
 
 #[derive(Debug, Deserialize, Serialize)]

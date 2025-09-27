@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 use bytes::Bytes;
-use rayon::iter::{ParallelBridge, ParallelIterator};
+use rayon::iter::{IntoParallelRefIterator, ParallelBridge, ParallelIterator};
 use reqwest::blocking::Client;
 use std::time::Duration;
 use std::{
@@ -124,7 +124,8 @@ pub fn directory_archive(directory_path: &PathBuf, archive_name: &PathBuf) -> Re
     let mut zip = ZipWriter::new(&file);
     let opts: FileOptions<ExtendedFileOptions> = FileOptions::default()
         .compression_method(zip::CompressionMethod::Deflated)
-        .unix_permissions(0o755);
+        .unix_permissions(0o755)
+        .compression_level(Some(3));
     let mut buffer = Vec::new();
 
     // walkDirで再帰処理

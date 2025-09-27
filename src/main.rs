@@ -29,6 +29,8 @@ fn main() -> anyhow::Result<()> {
     let _args = Args::parse();
     let config = read_config(Path::new("config.toml"))?;
     let manifest = read_manifest_json(Path::new(&config.manifest))?;
+    info(format!("{:?}", config));
+    info(format!("{:?}", manifest));
     let outputfolder = Path::new("./distribution");
     let mut noneed_with_server = config.default_config.no_needs_with_server;
     let mut noneed_config = config.additional_noneeds_with_server;

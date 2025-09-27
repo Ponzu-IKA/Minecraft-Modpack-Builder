@@ -70,7 +70,7 @@ pub fn fetchmods(
         }
         info(format!(
             "Downloading({:<03}/{:<03}) projectID={:<8} fileID={:<8}",
-            modcount, index, cf_mod.project_id, cf_mod.file_id
+            index, modcount, cf_mod.project_id, cf_mod.file_id
         ));
         let url = format!(
             "https://api.curse.tools/v1/cf/mods/{}/files/{}",
@@ -89,7 +89,7 @@ pub fn fetchmods(
         match fetch_file(&client, &download_url, &file_path) {
             Ok(()) => info(format!(
                 "Downloaded ({:<03}/{:<03}){}",
-                modcount, index, &file_name
+                index, modcount, &file_name
             )),
             Err(e) => error(format!("{} is not installed! error: {:?}", &file_name, e)),
         };
