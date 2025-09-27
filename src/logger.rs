@@ -4,7 +4,7 @@ use std::{
     sync::Mutex,
 };
 
-use chrono::{DateTime, FixedOffset, Local, Utc, format::Fixed};
+use chrono::{DateTime, FixedOffset, Utc};
 
 static LOGGER: Mutex<Option<File>> = Mutex::new(None);
 

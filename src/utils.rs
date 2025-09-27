@@ -1,6 +1,7 @@
 use anyhow::{Context, Result};
 use bytes::Bytes;
-use rayon::iter::{IntoParallelRefIterator, ParallelBridge, ParallelIterator};
+use core::fmt;
+use rayon::iter::{ParallelBridge, ParallelIterator};
 use reqwest::blocking::Client;
 use std::time::Duration;
 use std::{
@@ -17,6 +18,23 @@ use zip::{
 use crate::config::{Config, ManifestJson};
 use crate::curseforge::retry;
 use crate::logger::{error, info, warn};
+
+#[derive(Debug)]
+pub enum DownloadError {
+    Skipped,
+    RetryFault,
+}
+
+impl fmt::Display for DownloadError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            DownloadError::Skipped => write!(f, "Download skipped"),
+            DownloadError::RetryFault => write!(f, "retryed few times"),
+        }
+    }
+}
+
+impl std::error::Error for DownloadError {}
 
 pub fn read_manifest_json(path: &Path) -> Result<ManifestJson> {
     // JSON向けにBufReaderの実装が存在するが精々600要素程度.
@@ -43,23 +61,31 @@ fn retryable_fetch(client: &Client, download_url: &String) -> Result<Bytes, reqw
     Ok(resp)
 }
 
-pub fn fetch_file(client: &Client, download_url: &String, save_path: &PathBuf) -> Result<()> {
+pub fn fetch_file(
+    client: &Client,
+    download_url: &String,
+    save_path: &PathBuf,
+) -> Result<(), DownloadError> {
     if save_path.exists() {
         warn(format!(
             "The {:?} is already exists. skipped download.",
             save_path
         ));
-        return Ok(());
+        return Err(DownloadError::Skipped);
     }
     info(format!(
         "Start downloading {} to {:?}",
         download_url, save_path
     ));
-    let responsed_file = retry(
+    let file = retry(
         || retryable_fetch(client, download_url),
         5,
         Duration::from_secs(5),
-    )?;
+    );
+    let responsed_file = match file {
+        Ok(data) => data,
+        Err(_) => return Err(DownloadError::RetryFault),
+    };
 
     fs::write(save_path, responsed_file).expect("Error in Writing Mods to output_folder");
     info(format!("Saved to {:?}", save_path));
@@ -82,7 +108,7 @@ pub fn copy_dir(from: &Path, to: &Path) -> Result<bool> {
             "This is not Directory, skipped: {}",
             from.to_string_lossy()
         ));
-        return Ok(has_skiped);
+        return Err(DownloadError::Skipped.into());
     }
     fs::create_dir_all(to)?;
 
