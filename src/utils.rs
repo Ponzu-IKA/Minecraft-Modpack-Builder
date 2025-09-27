@@ -16,6 +16,7 @@ use zip::{
 
 use crate::config::{Config, ManifestJson};
 use crate::curseforge::retry;
+use crate::logger::{error, info, warn};
 
 pub fn read_manifest_json(path: &Path) -> Result<ManifestJson> {
     // JSON向けにBufReaderの実装が存在するが精々600要素程度.
@@ -42,33 +43,45 @@ fn retryable_fetch(client: &Client, download_url: &String) -> Result<Bytes, reqw
     Ok(resp)
 }
 
-pub fn fetch_file(client: &Client, download_url: &String, save_path: &PathBuf) {
+pub fn fetch_file(client: &Client, download_url: &String, save_path: &PathBuf) -> Result<()> {
     if save_path.exists() {
-        println!("The {:?} is already exists. skipped download.", save_path);
-        return;
+        warn(format!(
+            "The {:?} is already exists. skipped download.",
+            save_path
+        ));
+        return Ok(());
     }
-    println!("Start down loading {} to {:?}", download_url, save_path);
+    info(format!(
+        "Start downloading {} to {:?}",
+        download_url, save_path
+    ));
     let responsed_file = retry(
         || retryable_fetch(client, download_url),
         5,
         Duration::from_secs(5),
-    )
-    .unwrap();
+    )?;
 
     fs::write(save_path, responsed_file).expect("Error in Writing Mods to output_folder");
-    println!("Saved to {:?}", save_path);
+    info(format!("Saved to {:?}", save_path));
+    Ok(())
 }
 
 pub fn copy_dir(from: &Path, to: &Path) -> Result<bool> {
     let has_skiped = true;
-    let error = 0u16;
+
     fs::create_dir_all(to)?;
     if !from.is_dir() {
-        eprintln!("This is not Directory, skipped: {}", from.to_string_lossy());
+        warn(format!(
+            "This is not Directory, skipped: {}",
+            from.to_string_lossy()
+        ));
         return Ok(has_skiped);
     }
     if !to.is_dir() {
-        eprintln!("This is not Directory, skipped: {}", from.to_string_lossy());
+        warn(format!(
+            "This is not Directory, skipped: {}",
+            from.to_string_lossy()
+        ));
         return Ok(has_skiped);
     }
     fs::create_dir_all(to)?;
@@ -86,19 +99,22 @@ pub fn copy_dir(from: &Path, to: &Path) -> Result<bool> {
                 if let Some(parent) = to_path.parent() {
                     fs::create_dir_all(parent).expect("Error in Create directory");
                 }
-                println!(
+                info(format!(
                     "copy {} to {}",
                     from_path.to_string_lossy(),
                     to_path.to_string_lossy()
-                );
+                ));
 
                 if let Err(e) = fs::copy(from_path, &to_path) {
-                    eprintln!("Failed to copy {:?} | {:?} :{}", from_path, to_path, e);
+                    error(format!(
+                        "Failed to copy {:?} | {:?} :{}",
+                        from_path, to_path, e
+                    ));
                 }
             }
         });
 
-    println!("Copy {:?} to {:?} is Successful.", from, to);
+    info(format!("Copy {:?} to {:?} is Successful.", from, to));
 
     Ok(!has_skiped)
 }
@@ -120,7 +136,7 @@ pub fn directory_archive(directory_path: &PathBuf, archive_name: &PathBuf) -> Re
             let name = path.strip_prefix(directory_path).unwrap();
 
             if path.is_file() {
-                println!("adding file {:?} as {:?}", path, name);
+                info(format!("adding file {:?} as {:?}", path, name));
                 zip.start_file(name.to_string_lossy(), opts.clone())
                     .unwrap();
                 let mut f = File::open(path).unwrap();
@@ -128,13 +144,16 @@ pub fn directory_archive(directory_path: &PathBuf, archive_name: &PathBuf) -> Re
                 zip.write_all(&buffer).unwrap();
                 buffer.clear();
             } else if !name.as_os_str().is_empty() {
-                println!("create dir {:?}", name);
+                info(format!("create dir {:?}", name));
                 zip.add_directory(name.to_string_lossy(), opts.clone())
                     .unwrap();
             }
         });
 
     zip.finish().unwrap();
-    println!("Created Archive {:?}", archive_name.to_string_lossy());
+    info(format!(
+        "Created Archive {:?}",
+        archive_name.to_string_lossy()
+    ));
     Ok(())
 }

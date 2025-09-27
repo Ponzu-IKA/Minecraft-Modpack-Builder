@@ -1,5 +1,9 @@
-use crate::{config::Mod, utils::fetch_file};
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+use crate::{
+    config::Mod,
+    logger::{error, info, warn},
+    utils::fetch_file,
+};
+use rayon::iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use reqwest::blocking::Client;
 use serde_derive::Deserialize;
 use std::{
@@ -30,7 +34,7 @@ where
         match f() {
             Ok(val) => return Ok(val),
             Err(e) => {
-                eprintln!("Failed ({} times): {:?}, retrying...", attempt, e);
+                error(format!("Failed ({} times): {:?}, retrying...", attempt, e));
                 thread::sleep(delay);
             }
         }
@@ -39,48 +43,56 @@ where
 }
 
 fn get_json(client: &Client, url: &String) -> Result<FileResponse, reqwest::Error> {
-    println!("{}", url);
+    info(url);
     client.get(url).send().expect("Request Failed").json()
 }
-fn get_file() {}
 
 pub fn fetchmods(
     mod_list: &Vec<Mod>,
     output_folder: &Path,
-    server_banned_mods: &Vec<u32>,
+    server_banned_mods: &[u32],
 ) -> anyhow::Result<PathBuf> {
     let sleep = Duration::from_secs(5); //APIがパンクしちゃうのでちょっと長めに待たせる
 
     let output_folder = output_folder.join("mods");
     fs::create_dir_all(&output_folder)?;
+    let modcount = mod_list.len();
 
     let client = Client::new();
 
-    mod_list.par_iter().for_each(|cf_mod| {
-        if server_banned_mods.contains(&cf_mod.project_id)
-        {
-            println!("skip detected client mod: (id: {})", cf_mod.project_id);
+    mod_list.par_iter().enumerate().for_each(|(index, cf_mod)| {
+        if server_banned_mods.contains(&cf_mod.project_id) {
+            warn(format!(
+                "skip detected client mod: (id: {})",
+                cf_mod.project_id
+            ));
             return;
         }
-        println!(
-            "Downloading projectID={} fileID={}",
-            cf_mod.project_id, cf_mod.file_id
-        );
+        info(format!(
+            "Downloading({:<03}/{:<03}) projectID={:<8} fileID={:<8}",
+            modcount, index, cf_mod.project_id, cf_mod.file_id
+        ));
         let url = format!(
             "https://api.curse.tools/v1/cf/mods/{}/files/{}",
             cf_mod.project_id, cf_mod.file_id
         );
         let response = retry(|| get_json(&client, &url), 5, sleep).unwrap();
 
-        println!("JSON: {:?}", response);
         // JSONからファイル名を確保
-        let file_path = output_folder.join(&response.data.fileName);
+        let file_name = response.data.fileName;
+        let file_path = output_folder.join(&file_name);
 
         // JSONから有効なダウンロードURLを確保.
         let download_url = response.data.downloadUrl;
 
         // だうんろーど.
-        fetch_file(&client, &download_url, &file_path);
+        match fetch_file(&client, &download_url, &file_path) {
+            Ok(()) => info(format!(
+                "Downloaded ({:<03}/{:<03}){}",
+                modcount, index, &file_name
+            )),
+            Err(e) => error(format!("{} is not installed! error: {:?}", &file_name, e)),
+        };
     });
 
     Ok(output_folder)

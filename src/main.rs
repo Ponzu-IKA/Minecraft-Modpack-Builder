@@ -8,6 +8,7 @@ use config::Args;
 
 use crate::{
     curseforge::fetchmods,
+    logger::{info, init_logger},
     modloader::{VersionSet, fetch_modloader},
     utils::{copy_dir, directory_archive, read_config, read_manifest_json},
 };
@@ -15,35 +16,35 @@ use crate::{
 mod build;
 mod config;
 mod curseforge;
+mod logger;
 mod modloader;
 mod utils;
-/*
-#[cfg(test)]
-mod test;
-*/
+
 #[warn(unused_extern_crates)]
 fn main() -> anyhow::Result<()> {
-    let args = Args::parse();
+    init_logger("app.log");
+    info("Hello there!");
+    //warn("WARNING!");
+    //error("Oops.");
+    let _args = Args::parse();
     let config = read_config(Path::new("config.toml"))?;
-    println!("{:?}", config);
     let manifest = read_manifest_json(Path::new(&config.manifest))?;
     let outputfolder = Path::new("./distribution");
-    println!("{:?}", &manifest);
-    let mut client_id_ban = config.default_config.client_id_ban;
-    let mut config_ban_list = config.client_ban_list;
-    client_id_ban.append(&mut config_ban_list);
+    let mut noneed_with_server = config.default_config.no_needs_with_server;
+    let mut noneed_config = config.additional_noneeds_with_server;
+    noneed_with_server.append(&mut noneed_config);
 
     // CurseForgeからサーバーパック用のmodを取得
     // Server ID BANからクライアント系MODは除外済み
     let mods_path = {
         let mut path = PathBuf::new();
         if let Some(files) = &manifest.files {
-            path = fetchmods(files, outputfolder, &config.default_config.server_id_ban)?;
+            path = fetchmods(files, outputfolder, &noneed_with_server)?;
         };
         path
     };
 
-    println!("get curseforge mods is end!");
+    info("get curseforge mods is end!");
 
     let loader: &Vec<_> = &manifest.minecraft.mod_loaders[0].id.split('-').collect();
 
@@ -63,7 +64,7 @@ fn main() -> anyhow::Result<()> {
     fs::create_dir_all(&pack_path)?;
 
     fetch_modloader(&versionset, &loader_save_path);
-    'build_server_package: {
+    '_build_server_package: {
         let server_pack_path = outputfolder.join("./.server");
         copy_dir(&mods_path, &server_pack_path.join("./mods"))?;
         let override_dirs = &config.override_dirs;
@@ -74,10 +75,10 @@ fn main() -> anyhow::Result<()> {
             )?;
         }
         let archive_name = pack_path.join(format!("{}-server.zip", pack_name));
-        println!("{}", archive_name.to_string_lossy());
+        info(archive_name.to_string_lossy());
         directory_archive(&server_pack_path, &archive_name)?;
     };
-    'build_Client_package: {
+    '_build_Client_package: {
         let client_pack_path = outputfolder.join("./.client");
         let client_overrides_path = outputfolder.join("./.client/override");
 
@@ -104,7 +105,7 @@ fn main() -> anyhow::Result<()> {
         }
 
         let archive_name = pack_path.join(format!("{}-client.zip", pack_name));
-        println!("{}", archive_name.to_string_lossy());
+        info(archive_name.to_string_lossy());
         directory_archive(&client_pack_path, &archive_name)?;
     }
     Ok(())

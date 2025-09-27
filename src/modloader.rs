@@ -1,9 +1,13 @@
-use std::path::PathBuf;
+use std::path::Path;
 
 use reqwest::blocking::Client;
 
-use crate::utils::fetch_file;
+use crate::{
+    logger::{error, info},
+    utils::fetch_file,
+};
 
+#[allow(warnings)]
 pub enum LoaderType {
     Forge,
     NeoForge,
@@ -59,9 +63,9 @@ pub struct VersionSet {
     pub loader_type: LoaderType,
 }
 
-pub fn fetch_modloader(version_set: &VersionSet, path: &PathBuf) {
+pub fn fetch_modloader(version_set: &VersionSet, path: &Path) {
     let client = Client::new();
-    fetch_file(
+    match fetch_file(
         &client,
         &version_set.url(),
         &path.join(format!(
@@ -70,5 +74,8 @@ pub fn fetch_modloader(version_set: &VersionSet, path: &PathBuf) {
             lver = version_set.loader,
             mcver = version_set.minecraft
         )),
-    );
+    ) {
+        Ok(()) => info("ModLoader has been installed!"),
+        Err(e) => error(format!("Failed to download ModLoader! :{}", e)),
+    }
 }

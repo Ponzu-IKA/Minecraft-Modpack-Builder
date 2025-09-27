@@ -28,11 +28,7 @@ pub struct Config {
 
     // デフォルトの指定じゃ足りないときに使うよ.
     #[serde(default)]
-    pub client_ban_list: Vec<u32>,
-    // サーバーの方は使わないでいいと思う。
-    #[warn(deprecated)]
-    #[serde(default)]
-    pub server_ban_list: Vec<u32>,
+    pub additional_noneeds_with_server: Vec<u32>,
 }
 
 fn default_dirs() -> Vec<String> {
@@ -45,42 +41,24 @@ fn default_manifest() -> String {
 
 #[derive(Debug, Deserialize)]
 pub struct DefaultConfig {
-    pub client_id_ban: Vec<u32>,
-    pub server_id_ban: Vec<u32>,
+    pub no_needs_with_server: Vec<u32>,
 }
 
 impl Default for DefaultConfig {
     fn default() -> Self {
         Self {
-            client_id_ban: default_client_id_ban(),
-            server_id_ban: default_server_id_ban(),
+            no_needs_with_server: default_no_needs_with_server(),
         }
     }
 }
 
-fn default_config() -> DefaultConfig {
-    DefaultConfig {
-        client_id_ban: default_client_id_ban(),
-        server_id_ban: default_server_id_ban(),
-    }
-}
-
-fn default_server_id_ban() -> Vec<u32> {
+fn default_no_needs_with_server() -> Vec<u32> {
     // サーバーにいらないmod.
     vec![
         908741, // Embeddium
         352491, // ModernUI
         250398, // Controlling
         60089,  // MouseTweaks
-    ]
-}
-#[warn(deprecated)]
-fn default_client_id_ban() -> Vec<u32> {
-    // クライアントにいらないmod.
-    // おそらくこのコンフィグは必要ないと思われる.
-    // クライアントパックはサーバー+クライアントであるべき.
-    vec![
-        1122761, //AE2WebIntegration
     ]
 }
 
