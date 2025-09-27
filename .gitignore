@@ -4,6 +4,6 @@
 /kubejs
 /manifest.json
 /modlist.html
-/app.log
-./.config.toml
-./.test/
+/*.log
+/.config.toml
+/.test/
